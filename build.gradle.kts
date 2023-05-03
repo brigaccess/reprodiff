@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.gmail.brigaccess"
-version = "1.0-SNAPSHOT"
+version = "0.1"
 
 tasks.withType<AbstractArchiveTask>().configureEach {
     isPreserveFileTimestamps = false
@@ -18,6 +18,7 @@ repositories {
 dependencies {
     implementation("commons-codec:commons-codec:1.15")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-RC")
+    implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.5")
     testImplementation(kotlin("test"))
 }
 

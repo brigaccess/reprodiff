@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.codec.digest.DigestUtils
+import java.io.InputStream
 import kotlin.io.path.Path
 import kotlin.io.path.inputStream
 import kotlin.io.path.notExists
@@ -23,7 +24,14 @@ fun main(args: Array<String>) {
     exitProcess(compare(leftArg, rightArg, ignoreSize))
 }
 
-fun compare(leftArg: String, rightArg: String, ignoreSize: Boolean): Int {
+typealias InputStreamHashFunc = (x: InputStream) -> String
+
+fun compare(
+    leftArg: String,
+    rightArg: String,
+    ignoreSize: Boolean,
+    hashFunc: InputStreamHashFunc = { DigestUtils.sha256Hex(it) }
+): Int {
     // Check whether files exist
     val paths = listOf(leftArg, rightArg).map { Path(it) }
     paths.forEach {
@@ -48,7 +56,7 @@ fun compare(leftArg: String, rightArg: String, ignoreSize: Boolean): Int {
     runBlocking {
         paths.map {
             async(Dispatchers.Default) {
-                DigestUtils.sha256Hex(it.inputStream())
+                hashFunc(it.inputStream())
             }
         }.map { it.await() }.zipWithNext { left, right ->
             val mismatch = left != right

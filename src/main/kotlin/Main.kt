@@ -29,7 +29,7 @@ fun main(args: Array<String>) {
     } catch (e: IOException) {
         System.err.println("IO exception: ${e.message}")
     }
-    exitProcess(1)
+    exitProcess(2)
 }
 
 typealias InputStreamHashFunc = (x: InputStream) -> String

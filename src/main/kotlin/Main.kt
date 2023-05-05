@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.codec.digest.DigestUtils
+import java.io.IOException
 import java.io.InputStream
 import kotlin.io.path.Path
 import kotlin.io.path.inputStream
@@ -21,7 +22,14 @@ fun main(args: Array<String>) {
     ).default(false)
     parser.parse(args)
 
-    exitProcess(compare(leftArg, rightArg, ignoreSize))
+    try {
+        exitProcess(compare(leftArg, rightArg, ignoreSize))
+    } catch (e: java.nio.file.AccessDeniedException) {
+        System.err.println("Access denied: ${e.file}")
+    } catch (e: IOException) {
+        System.err.println("IO exception: ${e.message}")
+    }
+    exitProcess(1)
 }
 
 typealias InputStreamHashFunc = (x: InputStream) -> String
@@ -36,7 +44,7 @@ fun compare(
     val paths = listOf(leftArg, rightArg).map { Path(it) }
     paths.forEach {
         if (it.notExists()) {
-            System.err.println("File '$it' does not exist")
+            System.err.println("File does not exist: $it")
             return 2
         }
     }

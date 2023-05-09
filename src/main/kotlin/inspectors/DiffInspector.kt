@@ -8,9 +8,10 @@ interface DiffInspector {
     fun diff(
         left: Path,
         right: Path,
+        registry: DiffInspectorRegistry,
         depth: Int = 0,
         maxDepth: Int = 2,
         leftName: String? = null,
-        rightName: String? = null
+        rightName: String? = null,
     ): List<InspectionResult>
 }

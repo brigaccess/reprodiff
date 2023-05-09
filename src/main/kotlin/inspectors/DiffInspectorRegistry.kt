@@ -16,7 +16,7 @@ class DiffInspectorRegistry {
     fun inspectFiles(left: Path, right: Path, depth: Int = 0, maxDepth: Int = 2): List<InspectionResult> {
         return runBlocking {
             inspectors.map {
-                async (Dispatchers.Default) { it.diff(left, right, depth, maxDepth) }
+                async (Dispatchers.Default) { it.diff(left, right, this@DiffInspectorRegistry, depth, maxDepth) }
             }
             .map { it.await() }
             .flatten()

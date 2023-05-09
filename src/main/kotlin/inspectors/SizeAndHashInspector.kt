@@ -15,7 +15,13 @@ typealias InputStreamHashFunc = (x: InputStream) -> String
 
 class SizeAndHashInspector(private val ignoreSize: Boolean, private val hashFunc: InputStreamHashFunc) : DiffInspector {
     override fun diff(
-        left: Path, right: Path, depth: Int, maxDepth: Int, leftName: String?, rightName: String?
+        left: Path,
+        right: Path,
+        registry: DiffInspectorRegistry,
+        depth: Int,
+        maxDepth: Int,
+        leftName: String?,
+        rightName: String?
     ): List<InspectionResult> {
         val result = mutableListOf<InspectionResult>()
         val leftHumanName = leftName ?: left.fileName.toString()

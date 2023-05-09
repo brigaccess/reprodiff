@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.codec.digest.DigestUtils
+import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.InputStream
 import kotlin.io.path.Path
@@ -23,7 +24,14 @@ fun main(args: Array<String>) {
     parser.parse(args)
 
     try {
-        exitProcess(compare(leftArg, rightArg, ignoreSize))
+        val diff = compare(leftArg, rightArg, ignoreSize)
+        if (diff.isEmpty()) {
+            exitProcess(0)
+        }
+        diff.forEach { System.err.println(it.toHumanString()) }
+        exitProcess(1)
+    } catch (e: FileNotFoundException) {
+        System.err.println("File does not exist: ${e.message}")
     } catch (e: java.nio.file.AccessDeniedException) {
         System.err.println("Access denied: ${e.file}")
     } catch (e: IOException) {
@@ -39,41 +47,45 @@ fun compare(
     rightArg: String,
     ignoreSize: Boolean,
     hashFunc: InputStreamHashFunc = { DigestUtils.sha256Hex(it) }
-): Int {
+): List<Difference> {
+    val result = mutableListOf<Difference>()
+
     // Check whether files exist
     val paths = listOf(leftArg, rightArg).map { Path(it) }
     paths.forEach {
         if (it.notExists()) {
-            System.err.println("File does not exist: $it")
-            return 2
+            throw FileNotFoundException("$it")
         }
     }
 
     // Check whether file sizes match (to avoid expensive hash computations)
     paths.map { it.toFile().length() }.zipWithNext { left, right ->
         if (left != right) {
-            System.err.println("File size mismatch: $left bytes ${if (left < right) "<" else ">"} $right bytes")
+            result.add(
+                Difference(
+                    leftArg, rightArg, "File size mismatch", leftDiff = "$left bytes", rightDiff = "$right bytes"
+                )
+            )
             if (!ignoreSize) {
-                return 1
+                return result
             }
         }
     }
 
     // Calculate whether secure hashes match
-    var failed = false
     runBlocking {
         paths.map {
             async(Dispatchers.Default) {
                 hashFunc(it.inputStream())
             }
         }.map { it.await() }.zipWithNext { left, right ->
-            val mismatch = left != right
-            if (mismatch) {
-                System.err.println("File hash mismatch: $left != $right")
+            if (left != right) {
+                result.add(
+                    Difference(leftArg, rightArg, "File hash mismatch", leftDiff = left, rightDiff = right)
+                )
             }
-            failed = failed || mismatch
         }
     }
 
-    return if (failed) 1 else 0
+    return result
 }

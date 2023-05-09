@@ -1,8 +1,9 @@
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
+import java.io.FileNotFoundException
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -19,8 +20,9 @@ class ReprodiffTest {
         val right = tempDir.resolve("right")
         Files.write(right, listOf("Yay!"))
 
-        val observed = compare(left.toString(), right.toString(), false)
-        assertEquals(2, observed)
+        assertThrows<FileNotFoundException> {
+            compare(left.toString(), right.toString(), false)
+        }
     }
 
     @Test
@@ -31,7 +33,7 @@ class ReprodiffTest {
         val hashMock: InputStreamHashFunc = { called = true; it.toString() }
 
         val observed = compare(files[0].toString(), files[1].toString(), false, hashFunc = hashMock)
-        assertEquals(1, observed)
+        assertTrue(observed.any { it.details == "File size mismatch" })
         assertFalse(called)
     }
 
@@ -43,7 +45,7 @@ class ReprodiffTest {
         val hashMock: InputStreamHashFunc = { called = true; it.toString() }
 
         val observed = compare(files[0].toString(), files[1].toString(), true, hashFunc = hashMock)
-        assertEquals(1, observed)
+        assertTrue(observed.isNotEmpty())
         assertTrue(called)
     }
 
@@ -52,13 +54,14 @@ class ReprodiffTest {
         val files = prepareFiles(tempDir, "left", "l3ft")
 
         val observed = compare(files[0].toString(), files[1].toString(), false)
-        assertEquals(1, observed)
+        assertTrue(observed.size == 1)
+        assertTrue(observed.any { it.details == "File hash mismatch" })
     }
 
     @Test
     fun testMatchingFiles(@TempDir tempDir: Path) {
         val files = prepareFiles(tempDir, "left", "left")
         val observed = compare(files[0].toString(), files[1].toString(), false)
-        assertEquals(0, observed)
+        assertTrue(observed.isEmpty())
     }
 }

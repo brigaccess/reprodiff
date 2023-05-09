@@ -1,10 +1,10 @@
 /**
  * Data class that stores the difference information
  */
-data class Difference(
-    val leftName: String,
-    val rightName: String,
+data class InspectionResult(
     val details: String,
+    val leftName: String,
+    val rightName: String? = null,
 
     val leftStartPos: Int? = null,
     val leftEndPos: Int? = null,
@@ -13,16 +13,17 @@ data class Difference(
     val rightStartPos: Int? = null,
     val rightEndPos: Int? = null,
     val rightDiff: String? = null,
+    val suffix: String? = null,
 ) {
     fun toHumanString(): String {
-        return "$details: ${diffPartString(leftName, leftDiff, leftStartPos, leftEndPos)} vs ${
-            diffPartString(
-                rightName,
-                rightDiff,
-                rightStartPos,
-                rightEndPos
-            )
-        }"
+        var result = "$details: ${diffPartString(leftName, leftDiff, leftStartPos, leftEndPos)}"
+        if (rightName != null) {
+            result += " vs ${diffPartString(rightName, rightDiff, rightStartPos, rightEndPos)}"
+        }
+        if (suffix != null) {
+            result += " $suffix"
+        }
+        return result
     }
 
     private fun posString(startPos: Int? = null, endPos: Int? = null): String {

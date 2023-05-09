@@ -1,6 +1,6 @@
 package inspectors
 
-import Difference
+import InspectionResult
 import java.nio.file.Path
 
 interface DiffInspector {
@@ -12,5 +12,5 @@ interface DiffInspector {
         maxDepth: Int = 2,
         leftName: String? = null,
         rightName: String? = null
-    ): List<Difference>
+    ): List<InspectionResult>
 }

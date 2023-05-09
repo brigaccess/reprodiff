@@ -1,6 +1,6 @@
 package inspectors
 
-import Difference
+import InspectionResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -13,8 +13,7 @@ class DiffInspectorRegistry {
         inspectors.add(i)
     }
 
-    fun inspectFiles(left: Path, right: Path, depth: Int = 0, maxDepth: Int = 2): List<Difference> {
-
+    fun inspectFiles(left: Path, right: Path, depth: Int = 0, maxDepth: Int = 2): List<InspectionResult> {
         return runBlocking {
             inspectors.map {
                 async (Dispatchers.Default) { it.diff(left, right, depth, maxDepth) }

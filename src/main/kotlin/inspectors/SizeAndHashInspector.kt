@@ -1,6 +1,6 @@
 package inspectors
 
-import Difference
+import InspectionResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -16,8 +16,8 @@ typealias InputStreamHashFunc = (x: InputStream) -> String
 class SizeAndHashInspector(private val ignoreSize: Boolean, private val hashFunc: InputStreamHashFunc) : DiffInspector {
     override fun diff(
         left: Path, right: Path, depth: Int, maxDepth: Int, leftName: String?, rightName: String?
-    ): List<Difference> {
-        val result = mutableListOf<Difference>()
+    ): List<InspectionResult> {
+        val result = mutableListOf<InspectionResult>()
         val leftHumanName = leftName ?: left.fileName.toString()
         val rightHumanName = rightName ?: right.fileName.toString()
 
@@ -34,10 +34,10 @@ class SizeAndHashInspector(private val ignoreSize: Boolean, private val hashFunc
         paths.map { it.fileSize() }.zipWithNext { leftSize, rightSize ->
             if (leftSize != rightSize) {
                 result.add(
-                    Difference(
+                    InspectionResult(
+                        "File size mismatch",
                         leftHumanName,
                         rightHumanName,
-                        "File size mismatch",
                         leftDiff = "$leftSize bytes",
                         rightDiff = "$rightSize bytes"
                     )
@@ -57,10 +57,10 @@ class SizeAndHashInspector(private val ignoreSize: Boolean, private val hashFunc
             }.map { it.await() }.zipWithNext { left, right ->
                 if (left != right) {
                     result.add(
-                        Difference(
+                        InspectionResult(
+                            "File hash mismatch",
                             leftHumanName,
                             rightHumanName,
-                            "File hash mismatch",
                             leftDiff = left,
                             rightDiff = right
                         )

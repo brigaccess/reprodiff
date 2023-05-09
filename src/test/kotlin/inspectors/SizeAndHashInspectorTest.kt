@@ -1,3 +1,6 @@
+package inspectors
+
+import org.apache.commons.codec.digest.DigestUtils
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
@@ -7,7 +10,9 @@ import java.nio.file.Path
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class ReprodiffTest {
+class SizeAndHashInspectorTest {
+    private val sha256HashFunc: InputStreamHashFunc = { DigestUtils.sha256Hex(it) }
+
     private fun prepareFiles(tempDir: Path, left: String, right: String): List<Path> {
         val files = listOf(left, right).map { tempDir.resolve(it) }
         files.forEach { Files.write(it, listOf(it.toString())) }
@@ -21,7 +26,7 @@ class ReprodiffTest {
         Files.write(right, listOf("Yay!"))
 
         assertThrows<FileNotFoundException> {
-            compare(left.toString(), right.toString(), false)
+            SizeAndHashInspector(false, sha256HashFunc).diff(left, right)
         }
     }
 
@@ -32,7 +37,7 @@ class ReprodiffTest {
         var called = false
         val hashMock: InputStreamHashFunc = { called = true; it.toString() }
 
-        val observed = compare(files[0].toString(), files[1].toString(), false, hashFunc = hashMock)
+        val observed = SizeAndHashInspector(false, hashMock).diff(files[0], files[1])
         assertTrue(observed.any { it.details == "File size mismatch" })
         assertFalse(called)
     }
@@ -44,7 +49,7 @@ class ReprodiffTest {
         var called = false
         val hashMock: InputStreamHashFunc = { called = true; it.toString() }
 
-        val observed = compare(files[0].toString(), files[1].toString(), true, hashFunc = hashMock)
+        val observed = SizeAndHashInspector(true, hashMock).diff(files[0], files[1])
         assertTrue(observed.isNotEmpty())
         assertTrue(called)
     }
@@ -53,7 +58,7 @@ class ReprodiffTest {
     fun testSizeMatchingDifferentFiles(@TempDir tempDir: Path) {
         val files = prepareFiles(tempDir, "left", "l3ft")
 
-        val observed = compare(files[0].toString(), files[1].toString(), false)
+        val observed = SizeAndHashInspector(false, sha256HashFunc).diff(files[0], files[1])
         assertTrue(observed.size == 1)
         assertTrue(observed.any { it.details == "File hash mismatch" })
     }
@@ -61,7 +66,7 @@ class ReprodiffTest {
     @Test
     fun testMatchingFiles(@TempDir tempDir: Path) {
         val files = prepareFiles(tempDir, "left", "left")
-        val observed = compare(files[0].toString(), files[1].toString(), false)
+        val observed = SizeAndHashInspector(false, sha256HashFunc).diff(files[0], files[1])
         assertTrue(observed.isEmpty())
     }
 }

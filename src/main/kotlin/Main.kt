@@ -1,3 +1,5 @@
+import inspectors.DiffInspectorRegistry
+import inspectors.SizeAndHashInspector
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
@@ -23,8 +25,11 @@ fun main(args: Array<String>) {
     ).default(false)
     parser.parse(args)
 
+    val registry = DiffInspectorRegistry()
+    registry.register(SizeAndHashInspector(ignoreSize) { DigestUtils.sha256Hex(it) })
+
     try {
-        val diff = compare(leftArg, rightArg, ignoreSize)
+        val diff = registry.inspectFiles(Path(leftArg), Path(rightArg))
         if (diff.isEmpty()) {
             exitProcess(0)
         }
@@ -38,54 +43,4 @@ fun main(args: Array<String>) {
         System.err.println("IO exception: ${e.message}")
     }
     exitProcess(2)
-}
-
-typealias InputStreamHashFunc = (x: InputStream) -> String
-
-fun compare(
-    leftArg: String,
-    rightArg: String,
-    ignoreSize: Boolean,
-    hashFunc: InputStreamHashFunc = { DigestUtils.sha256Hex(it) }
-): List<Difference> {
-    val result = mutableListOf<Difference>()
-
-    // Check whether files exist
-    val paths = listOf(leftArg, rightArg).map { Path(it) }
-    paths.forEach {
-        if (it.notExists()) {
-            throw FileNotFoundException("$it")
-        }
-    }
-
-    // Check whether file sizes match (to avoid expensive hash computations)
-    paths.map { it.toFile().length() }.zipWithNext { left, right ->
-        if (left != right) {
-            result.add(
-                Difference(
-                    leftArg, rightArg, "File size mismatch", leftDiff = "$left bytes", rightDiff = "$right bytes"
-                )
-            )
-            if (!ignoreSize) {
-                return result
-            }
-        }
-    }
-
-    // Calculate whether secure hashes match
-    runBlocking {
-        paths.map {
-            async(Dispatchers.Default) {
-                hashFunc(it.inputStream())
-            }
-        }.map { it.await() }.zipWithNext { left, right ->
-            if (left != right) {
-                result.add(
-                    Difference(leftArg, rightArg, "File hash mismatch", leftDiff = left, rightDiff = right)
-                )
-            }
-        }
-    }
-
-    return result
 }

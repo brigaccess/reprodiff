@@ -20,6 +20,9 @@ object ArgTypeLong : ArgType<kotlin.Long>(true) {
             ?: throw ParsingException("Option $name is expected to be long integer number. $value is provided.")
 }
 
+const val DEFAULT_COMPRESS_MEMORY_LIMIT = 10240000
+const val DEFAULT_ARCHIVE_SIZE_LIMIT = 256000000L
+const val DEFAULT_TOTAL_EXTRACTED_SIZE_LIMIT = 512000000L
 
 fun main(args: Array<String>) {
     val parser = ArgParser("reprodiff")
@@ -33,19 +36,19 @@ fun main(args: Array<String>) {
     ).default(3)
     val compressMemoryLimit by parser.option(
         ArgType.Int, "compress-memlimit", description = "Memory limit for in-memory archive operations (in bytes)"
-    )
+    ).default(DEFAULT_COMPRESS_MEMORY_LIMIT)
     val archiveSizeLimit by parser.option(
         ArgTypeLong, "max-archive-size", description = "Limit for the size of analyzed archives (in bytes)"
-    )
+    ).default(DEFAULT_ARCHIVE_SIZE_LIMIT)
     val extractedSizeLimit by parser.option(
         ArgTypeLong, "max-extracted-size", description = "Limit for the total size of files extracted from the archive (in bytes)"
-    )
+    ).default(DEFAULT_TOTAL_EXTRACTED_SIZE_LIMIT)
     parser.parse(args)
 
     val registry = DiffInspectorRegistry()
     registry.register(SizeAndHashInspector(ignoreSize) { DigestUtils.sha256Hex(it) })
     registry.register(CommonsCompressInspector(
-        memoryLimitKb = compressMemoryLimit ?: 10240000,
+        memoryLimitKb = compressMemoryLimit,
         archiveSizeLimit = archiveSizeLimit,
         totalExtractedSizeLimit = extractedSizeLimit
     ))

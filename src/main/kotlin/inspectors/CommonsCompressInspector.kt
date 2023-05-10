@@ -1,5 +1,7 @@
 package inspectors
 
+import DEFAULT_ARCHIVE_SIZE_LIMIT
+import DEFAULT_TOTAL_EXTRACTED_SIZE_LIMIT
 import InspectionResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -17,9 +19,6 @@ import java.time.Instant
 import java.util.*
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.fileSize
-
-const val DEFAULT_ARCHIVE_SIZE_LIMIT = 512000000L
-const val DEFAULT_TOTAL_EXTRACTED_SIZE_LIMIT = 2048000000L
 
 class SizeLimitExceeded(written: Long) : Exception("$written")
 
@@ -88,8 +87,8 @@ data class ArchiveEntryMetadata(
  */
 class CommonsCompressInspector(
     memoryLimitKb: Int,
-    private val archiveSizeLimit: Long? = null,
-    private val totalExtractedSizeLimit: Long? = null,
+    private val archiveSizeLimit: Long = DEFAULT_ARCHIVE_SIZE_LIMIT,
+    private val totalExtractedSizeLimit: Long = DEFAULT_TOTAL_EXTRACTED_SIZE_LIMIT,
     private val tempRootDir: Path? = null,
 ) : DiffInspector {
     private val csf = CompressorStreamFactory(false, memoryLimitKb)
@@ -176,18 +175,15 @@ class CommonsCompressInspector(
     private fun inspectArchiveSize(
         paths: List<Pair<Path, String>>
     ): List<InspectionResult> {
-        val sizeLimitDefault = archiveSizeLimit == null
-        val sizeLimit = archiveSizeLimit ?: DEFAULT_ARCHIVE_SIZE_LIMIT
-
         return paths.mapNotNull {
             val size = it.first.fileSize()
-            if (size > sizeLimit) {
+            if (archiveSizeLimit in 1 until size) {
                 InspectionResult(
                     INSPECTION_ARCHIVE_TOO_BIG_TO_ANALYZE,
                     it.second,
-                    "${if (sizeLimitDefault) "default" else "user-provided"} limit",
+                    "limit",
                     leftDiff = "$size bytes",
-                    rightDiff = "$sizeLimit bytes"
+                    rightDiff = "$archiveSizeLimit bytes"
                 )
             } else null
         }
@@ -213,8 +209,7 @@ class CommonsCompressInspector(
         }
         rootFolder.toFile().deleteOnExit()
 
-        val sizeLimitDefault = totalExtractedSizeLimit == null
-        val sizeBudget = totalExtractedSizeLimit ?: DEFAULT_TOTAL_EXTRACTED_SIZE_LIMIT
+        val sizeBudget = totalExtractedSizeLimit
         var remainingBudget: Long = sizeBudget
         val useSizeLimit = remainingBudget > 0
 
@@ -246,7 +241,7 @@ class CommonsCompressInspector(
                 metadata.inspectionResult = InspectionResult(
                     INSPECTION_ARCHIVE_EXTRACTED_SIZE_LIMIT_EXCEEDED,
                     humanName,
-                    suffix = "(more than $sizeBudget bytes written, the limit was ${if (sizeLimitDefault) "default" else "user-provided"})"
+                    suffix = "(more than $sizeBudget bytes written)"
                 )
             } else {
                 extracted = try {
@@ -266,7 +261,7 @@ class CommonsCompressInspector(
                     metadata.inspectionResult = InspectionResult(
                         INSPECTION_ARCHIVE_EXTRACTION_FAILED_SIZE_LIMIT_EXCEEDED,
                         "$humanName#/${metadata.entryName}",
-                        suffix = "(more than $sizeBudget bytes written, the limit was ${if (sizeLimitDefault) "default" else "user-provided"})"
+                        suffix = "(more than $sizeBudget bytes written)"
                     )
                     path.deleteIfExists()
                     false

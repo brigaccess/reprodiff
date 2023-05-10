@@ -17,7 +17,9 @@ repositories {
 
 dependencies {
     implementation("commons-codec:commons-codec:1.15")
+    implementation("io.github.java-diff-utils:java-diff-utils:4.12")
     implementation("org.apache.commons:commons-compress:1.23.0")
+    implementation("org.apache.tika:tika-core:2.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-RC")
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.5")
     implementation("ch.qos.logback:logback-core:1.4.7")

@@ -6,6 +6,7 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.ParsingException
 import kotlinx.cli.default
 import org.apache.commons.codec.digest.DigestUtils
+import org.apache.tika.Tika
 import java.io.FileNotFoundException
 import java.io.IOException
 import kotlin.io.path.Path
@@ -73,7 +74,7 @@ fun main(args: Array<String>) {
                 if (path.exists() && path.isDirectory()) path else null
             }
         ))
-        register(TextDiffInspector(textMaxSize))
+        register(TextDiffInspector(textMaxSize, Tika()))
     }
 
     try {

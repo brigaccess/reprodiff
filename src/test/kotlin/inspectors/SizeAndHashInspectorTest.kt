@@ -1,5 +1,6 @@
 package inspectors
 
+import DiffInspectorRegistry
 import org.apache.commons.codec.digest.DigestUtils
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows

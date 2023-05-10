@@ -1,5 +1,7 @@
 package inspectors
 
+import DiffInspector
+import DiffInspectorRegistry
 import InspectionResult
 import com.github.difflib.DiffUtils
 import com.github.difflib.patch.DeltaType

@@ -1,5 +1,4 @@
 import inspectors.CommonsCompressInspector
-import inspectors.DiffInspectorRegistry
 import inspectors.SizeAndHashInspector
 import inspectors.TextDiffInspector
 import kotlinx.cli.ArgParser

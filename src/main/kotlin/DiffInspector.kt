@@ -1,6 +1,3 @@
-package inspectors
-
-import InspectionResult
 import java.nio.file.Path
 
 interface DiffInspector {

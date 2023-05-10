@@ -1,5 +1,7 @@
 package inspectors
 
+import DiffInspector
+import DiffInspectorRegistry
 import InspectionResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

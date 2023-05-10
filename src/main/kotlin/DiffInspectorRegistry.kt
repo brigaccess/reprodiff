@@ -1,7 +1,3 @@
-package inspectors
-
-import InspectionResult
-import kotlinx.coroutines.runBlocking
 import java.nio.file.Path
 
 class DiffInspectorRegistry {

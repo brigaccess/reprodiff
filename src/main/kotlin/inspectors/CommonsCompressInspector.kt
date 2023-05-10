@@ -359,7 +359,7 @@ class CommonsCompressInspector(
 
                     // Names are equal but metadata is not
                     if (leftItem.entryName == rightItem.entryName) {
-                        result.addAll(diffMetadata(leftItem, rightItem, leftArchiveName, rightArchiveName))
+                        result.addAll(inspectMetadata(leftItem, rightItem, leftArchiveName, rightArchiveName))
                         addToIntersection(leftItem, rightItem)
                         continue
                     }
@@ -390,34 +390,32 @@ class CommonsCompressInspector(
                         leftMap.containsKey(rightItem.entryName) && !handledWrongOrder.contains(rightItem.entryName)
                     val rightContains =
                         rightMap.containsKey(leftItem.entryName) && !handledWrongOrder.contains(leftItem.entryName)
-                    if (leftContains || rightContains) {
-                        // No need to spam with "wrong order" messages.
-                        if (handledWrongOrder.isEmpty()) {
-                            result.add(
-                                InspectionResult(
-                                    INSPECTION_ARCHIVE_WRONG_ORDER,
-                                    leftArchiveName,
-                                    rightArchiveName,
-                                    leftDiff = leftItem.entryName,
-                                    rightDiff = rightItem.entryName
-                                )
+                    // The first check is to prevent spam with "wrong order" messages.
+                    if (handledWrongOrder.isEmpty() && (leftContains || rightContains)) {
+                        result.add(
+                            InspectionResult(
+                                INSPECTION_ARCHIVE_WRONG_ORDER,
+                                leftArchiveName,
+                                rightArchiveName,
+                                leftDiff = leftItem.entryName,
+                                rightDiff = rightItem.entryName
                             )
-                        }
+                        )
+                    }
 
-                        if (leftContains) {
-                            handledWrongOrder.add(rightItem.entryName)
-                            val e = leftMap[rightItem.entryName]!!
-                            result.addAll(diffMetadata(e, rightItem, leftArchiveName, rightArchiveName))
-                            addToIntersection(e, rightItem)
-                        }
+                    if (leftContains) {
+                        handledWrongOrder.add(rightItem.entryName)
+                        val e = leftMap[rightItem.entryName]!!
+                        result.addAll(inspectMetadata(e, rightItem, leftArchiveName, rightArchiveName))
+                        addToIntersection(e, rightItem)
+                    }
 
-                        if (rightContains) {
-                            handledWrongOrder.add(leftItem.entryName)
-                            val e = rightMap[leftItem.entryName]!!
-                            result.addAll(diffMetadata(leftItem, e, leftArchiveName, rightArchiveName))
-                            // This is intentional: we always add the left item to the intersection
-                            addToIntersection(leftItem, e)
-                        }
+                    if (rightContains) {
+                        handledWrongOrder.add(leftItem.entryName)
+                        val e = rightMap[leftItem.entryName]!!
+                        result.addAll(inspectMetadata(leftItem, e, leftArchiveName, rightArchiveName))
+                        // This is intentional: we always add the left item to the intersection
+                        addToIntersection(leftItem, e)
                     }
                 } else if (leftItem != null && rightItem == null) {
                     // We reached the end of the right list
@@ -475,7 +473,10 @@ class CommonsCompressInspector(
         return Pair(result, resultIntersection)
     }
 
-    private fun diffMetadata(
+    /**
+     * Compares two metadata entries and returns diff inspection result
+     */
+    private fun inspectMetadata(
         left: ArchiveEntryMetadata, right: ArchiveEntryMetadata, leftArchiveName: String, rightArchiveName: String
     ): List<InspectionResult> {
         val result = mutableListOf<InspectionResult>()
@@ -551,9 +552,7 @@ class CommonsCompressInspector(
     private fun provideInputStream(p: Path): InputStream {
         val stream = BufferedInputStream(Files.newInputStream(p))
         return try {
-            BufferedInputStream(
-                csf.createCompressorInputStream(stream)
-            )
+            csf.createCompressorInputStream(stream).buffered()
         } catch (e: CompressorException) {
             logger.debug("Failed to create compressor input stream for $p: $e")
             stream

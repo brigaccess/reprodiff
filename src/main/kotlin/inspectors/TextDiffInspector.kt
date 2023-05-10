@@ -19,10 +19,6 @@ import kotlin.io.path.inputStream
 class TextDiffInspector(private val sizeLimit: Long) : DiffInspector {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val tika = Tika()
-    private val diffGenerator = DiffRowGenerator.create()
-        .mergeOriginalRevised(true)
-        .inlineDiffByWord(true)
-        .build()
 
     override fun diff(
         left: Path,

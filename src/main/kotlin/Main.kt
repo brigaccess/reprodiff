@@ -63,7 +63,7 @@ fun main(args: Array<String>) {
 
     val registry = DiffInspectorRegistry()
     with(registry) {
-        register(SizeAndHashInspector(ignoreSize) { DigestUtils.sha256Hex(it) })
+        register(SizeAndHashInspector(ignoreSize, DigestUtils::sha256Hex))
         register(CommonsCompressInspector(
             memoryLimitKb = compressMemoryLimit,
             archiveSizeLimit = archiveSizeLimit,

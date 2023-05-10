@@ -15,7 +15,7 @@ class DiffInspectorRegistry {
         if (depth > maxDepth) {
             return listOf(
                 InspectionResult(
-                    "Depth limit exceeded, will not diff",
+                    INSPECTION_DEPTH_EXCEEDED,
                     leftHumanName,
                     rightHumanName
                 )
@@ -26,5 +26,9 @@ class DiffInspectorRegistry {
                 left, right, this@DiffInspectorRegistry, depth, maxDepth, leftHumanName, rightHumanName
             )
         }.flatten()
+    }
+
+    companion object {
+        const val INSPECTION_DEPTH_EXCEEDED = "Depth limit exceeded, will not diff"
     }
 }

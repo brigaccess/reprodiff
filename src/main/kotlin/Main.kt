@@ -42,7 +42,7 @@ fun main(args: Array<String>) {
         ArgType.String, "archive-temp-dir", description = "Temporary directory to unpack files to"
     )
     val compressMemoryLimit by parser.option(
-        ArgType.Int, "archive-compress-memlimit", description = "Memory limit for in-memory archive operations (in bytes)"
+        ArgType.Int, "archive-compress-memlimit", description = "Memory limit for in-memory archive operations (in kilobytes)"
     ).default(DEFAULT_COMPRESS_MEMORY_LIMIT)
     val archiveSizeLimit by parser.option(
         ArgTypeLong, "archive-max-size", description = "Limit for the size of analyzed archives (in bytes)"

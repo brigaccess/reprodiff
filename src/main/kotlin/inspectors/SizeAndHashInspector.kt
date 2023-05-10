@@ -20,13 +20,10 @@ class SizeAndHashInspector(private val ignoreSize: Boolean, private val hashFunc
         registry: DiffInspectorRegistry,
         depth: Int,
         maxDepth: Int,
-        leftName: String?,
-        rightName: String?
+        leftHumanName: String,
+        rightHumanName: String
     ): List<InspectionResult> {
         val result = mutableListOf<InspectionResult>()
-        val leftHumanName = leftName ?: left.fileName.toString()
-        val rightHumanName = rightName ?: right.fileName.toString()
-
 
         // Check whether files exist
         val paths = listOf(left, right)

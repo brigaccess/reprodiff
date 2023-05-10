@@ -101,11 +101,9 @@ class CommonsCompressInspector(
         registry: DiffInspectorRegistry,
         depth: Int,
         maxDepth: Int,
-        leftName: String?,
-        rightName: String?
+        leftHumanName: String,
+        rightHumanName: String
     ): List<InspectionResult> {
-        val leftHumanName = leftName ?: left.fileName.toString()
-        val rightHumanName = rightName ?: right.fileName.toString()
 
         // Check the archive types first
         val (leftType, rightType) = detectArchiveTypes(left, right)

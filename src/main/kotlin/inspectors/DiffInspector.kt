@@ -11,7 +11,7 @@ interface DiffInspector {
         registry: DiffInspectorRegistry,
         depth: Int = 0,
         maxDepth: Int = 2,
-        leftName: String? = null,
-        rightName: String? = null,
+        leftHumanName: String = left.fileName.toString(),
+        rightHumanName: String = right.fileName.toString(),
     ): List<InspectionResult>
 }

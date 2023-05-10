@@ -14,18 +14,20 @@ class DiffInspectorRegistry {
     fun inspectFiles(
         left: Path, right: Path, depth: Int = 0, maxDepth: Int = 2, leftName: String? = null, rightName: String? = null
     ): List<InspectionResult> {
+        val leftHumanName = leftName ?: left.fileName.toString()
+        val rightHumanName = rightName ?: right.fileName.toString()
         if (depth > maxDepth) {
             return listOf(
                 InspectionResult(
                     "Depth limit exceeded, will not diff",
-                    leftName ?: left.fileName.toString(),
-                    rightName ?: right.fileName.toString()
+                    leftHumanName,
+                    rightHumanName
                 )
             )
         }
         return inspectors.map {
             it.diff(
-                left, right, this@DiffInspectorRegistry, depth, maxDepth, leftName, rightName
+                left, right, this@DiffInspectorRegistry, depth, maxDepth, leftHumanName, rightHumanName
             )
         }.flatten()
     }

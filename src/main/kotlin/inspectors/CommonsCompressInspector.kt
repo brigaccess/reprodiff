@@ -18,6 +18,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
 import java.util.*
+import kotlin.io.path.Path
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.fileSize
 
@@ -220,7 +221,6 @@ class CommonsCompressInspector(
             // all the files will get the random UUIDs instead. These are not
             // for humans to investigate anyway, humans have archivers.
             val uuid = UUID.randomUUID().toString()
-
             val metadata = ArchiveEntryMetadata.fromEntry(archiveEntry)
 
             // We're only extracting files, but we also need to keep track of directories
@@ -229,7 +229,8 @@ class CommonsCompressInspector(
                 continue
             }
 
-            val path: Path = rootFolder.resolve(uuid)
+            val extension = entryExtension(metadata.entryName)
+            val path: Path = rootFolder.resolve("$uuid$extension")
 
             // Try to extract while also respecting the size limits (if necessary)
             val extracted: Boolean
@@ -272,6 +273,21 @@ class CommonsCompressInspector(
             entries.add(metadata)
         }
         return entries
+    }
+
+    private fun entryExtension(entryName: String): String {
+        return try {
+            val pathForExtension = Path(entryName)
+            val splitForExtension = pathForExtension.fileName.normalize().toString().split('.')
+            val result = if (splitForExtension.size > 1) ".${splitForExtension.last()}" else ""
+            if (result.all { it >= Char(0x20) && it < Char(0x7f) }) result else {
+                logger.debug("Non-printable ASCII chars in '$entryName', will not save the extension")
+                ""
+            }
+        } catch (e: Exception) {
+            logger.debug("Failed to extract extension from string '$entryName': $e")
+            ""
+        }
     }
 
     /**

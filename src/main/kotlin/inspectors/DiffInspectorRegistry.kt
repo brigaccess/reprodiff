@@ -23,12 +23,10 @@ class DiffInspectorRegistry {
                 )
             )
         }
-        return runBlocking {
-            inspectors.map {
-                it.diff(
-                    left, right, this@DiffInspectorRegistry, depth, maxDepth, leftName, rightName
-                )
-            }.flatten()
-        }
+        return inspectors.map {
+            it.diff(
+                left, right, this@DiffInspectorRegistry, depth, maxDepth, leftName, rightName
+            )
+        }.flatten()
     }
 }

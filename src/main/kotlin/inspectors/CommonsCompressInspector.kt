@@ -12,6 +12,7 @@ import org.apache.commons.compress.archivers.ArchiveStreamFactory
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.compressors.CompressorException
 import org.apache.commons.compress.compressors.CompressorStreamFactory
+import org.slf4j.LoggerFactory
 import java.io.*
 import java.nio.file.Files
 import java.nio.file.Path
@@ -92,6 +93,7 @@ class CommonsCompressInspector(
     private val tempRootDir: Path? = null,
 ) : DiffInspector {
     private val csf = CompressorStreamFactory(false, memoryLimitKb)
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun diff(
         left: Path,
@@ -139,10 +141,7 @@ class CommonsCompressInspector(
                 async(Dispatchers.IO) { extractArchiveFilesFlat(path, humanName) }
             }.map { it.await() }.zipWithNext().map {
                 val (metadataInspectionResults, intersection) = compareMetadataLists(
-                    it.first,
-                    it.second,
-                    leftHumanName,
-                    rightHumanName
+                    it.first, it.second, leftHumanName, rightHumanName
                 )
                 result.addAll(metadataInspectionResults)
                 intersection.map { toInspect ->
@@ -164,6 +163,7 @@ class CommonsCompressInspector(
                     try {
                         ArchiveStreamFactory.detect(provideInputStream(it))
                     } catch (e: ArchiveException) {
+                        logger.debug("Failed archive type detection for $it: $e")
                         ""
                     }
                 }
@@ -231,7 +231,6 @@ class CommonsCompressInspector(
                 continue
             }
 
-            // TODO Might be a good idea to retain the extensions?
             val path: Path = rootFolder.resolve(uuid)
 
             // Try to extract while also respecting the size limits (if necessary)
@@ -255,7 +254,7 @@ class CommonsCompressInspector(
                     path.toFile().deleteOnExit()
                     true
                 } catch (e: IOException) {
-                    // TODO Log the error
+                    logger.error("Failed extracting $path: $e")
                     false
                 } catch (e: SizeLimitExceeded) {
                     metadata.inspectionResult = InspectionResult(
@@ -311,8 +310,9 @@ class CommonsCompressInspector(
                 val rp = r.entryPath
                 if (l.extracted && r.extracted && lp != null && rp != null) {
                     intersection.add(Triple(lp, rp, l.entryName))
-                }
-                // TODO Debug logging?
+                } else if (!l.isDirectory && !r.isDirectory) {
+                    logger.debug("Tried adding ${l.entryName} to intersection but failed: extracted ${l.extracted}/${r.extracted} path ${l.entryPath}/${r.entryPath}")
+                } else {}
             }
 
             val leftOnly = mutableListOf<ArchiveEntryMetadata>()
@@ -539,6 +539,7 @@ class CommonsCompressInspector(
                 csf.createCompressorInputStream(stream)
             )
         } catch (e: CompressorException) {
+            logger.debug("Failed to create compressor input stream for $p: $e")
             stream
         }
     }

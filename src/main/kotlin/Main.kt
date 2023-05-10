@@ -43,7 +43,14 @@ fun main(args: Array<String>) {
     val extractedSizeLimit by parser.option(
         ArgTypeLong, "max-extracted-size", description = "Limit for the total size of files extracted from the archive (in bytes)"
     ).default(DEFAULT_TOTAL_EXTRACTED_SIZE_LIMIT)
+    val debug by parser.option(
+        ArgType.Boolean, "debug", description = "Enables debug logging"
+    ).default(false)
     parser.parse(args)
+
+    if (debug) {
+        System.setProperty("log.level", "debug")
+    }
 
     val registry = DiffInspectorRegistry()
     registry.register(SizeAndHashInspector(ignoreSize) { DigestUtils.sha256Hex(it) })

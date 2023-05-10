@@ -108,7 +108,7 @@ class TextDiffInspector(private val sizeLimit: Long, private val tika: Tika) : D
 
     private fun sizeLimitExceeded(pathsWithNamesAndSizes: List<Triple<Path, String, Long>>) =
         pathsWithNamesAndSizes.any {
-            val fileBigger = it.third > sizeLimit
+            val fileBigger = sizeLimit in 0 until it.third
             if (fileBigger) {
                 logger.debug("Size of file ${it.first} exceeds the size limit: ${it.third} > $sizeLimit")
             }

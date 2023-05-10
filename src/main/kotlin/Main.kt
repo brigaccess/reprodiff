@@ -10,6 +10,8 @@ import org.apache.commons.codec.digest.DigestUtils
 import java.io.FileNotFoundException
 import java.io.IOException
 import kotlin.io.path.Path
+import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
 import kotlin.system.exitProcess
 
 object ArgTypeLong : ArgType<kotlin.Long>(true) {
@@ -36,6 +38,9 @@ fun main(args: Array<String>) {
     val maxDepth by parser.option(
         ArgType.Int, "max-depth", description = "Maximum depth of recursive analysis"
     ).default(3)
+    val archiveTempRootDir by parser.option(
+        ArgType.String, "archive-temp-dir", description = "Temporary directory to unpack files to"
+    )
     val compressMemoryLimit by parser.option(
         ArgType.Int, "archive-compress-memlimit", description = "Memory limit for in-memory archive operations (in bytes)"
     ).default(DEFAULT_COMPRESS_MEMORY_LIMIT)
@@ -63,7 +68,11 @@ fun main(args: Array<String>) {
         register(CommonsCompressInspector(
             memoryLimitKb = compressMemoryLimit,
             archiveSizeLimit = archiveSizeLimit,
-            totalExtractedSizeLimit = extractedSizeLimit
+            totalExtractedSizeLimit = extractedSizeLimit,
+            tempRootDir = archiveTempRootDir?.let {
+                val path = Path(it)
+                if (path.exists() && path.isDirectory()) path else null
+            }
         ))
         register(TextDiffInspector(textMaxSize))
     }

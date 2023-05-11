@@ -48,17 +48,15 @@ class TextDiffInspector(private val sizeLimit: Long, private val tika: Tika) : D
             }
         }.zipWithNext().forEach {
             val patch = DiffUtils.diff(it.first, it.second)
-            patch.deltas.map { d -> patchToInspectionResult(d, leftHumanName, rightHumanName) }
+            patch.deltas.map { d -> result.add(patchToInspectionResult(d, leftHumanName, rightHumanName)) }
         }
 
         return result
     }
 
     private fun patchToInspectionResult(
-        delta: AbstractDelta<String>,
-        leftHumanName: String,
-        rightHumanName: String
-    ) {
+        delta: AbstractDelta<String>, leftHumanName: String, rightHumanName: String
+    ): InspectionResult {
         val leftStartPosition = delta.source.position + 1
         val leftEndPosition = leftStartPosition + delta.source.lines.size
         val leftDiff = "\n======================\n" + delta.source.lines.joinToString("\n") + "\n\n---"
@@ -68,11 +66,11 @@ class TextDiffInspector(private val sizeLimit: Long, private val tika: Tika) : D
         val diffType = when (delta.type) {
             DeltaType.INSERT -> INSPECTION_RIGHT_EXTRA_LINES
             DeltaType.CHANGE -> INSPECTION_RIGHT_CHANGED_LINES
-            DeltaType.DELETE -> INSPECTION_RIGHT_MISSING_LINES
+            DeltaType.DELETE -> INSPECTION_RIGHT_DELETED_LINES
             else -> "Something changed"
         }
 
-        InspectionResult(
+        return InspectionResult(
             diffType,
             leftHumanName,
             rightHumanName,
@@ -85,26 +83,25 @@ class TextDiffInspector(private val sizeLimit: Long, private val tika: Tika) : D
         )
     }
 
-    private fun unsupportedMimes(pathsAndNames: List<Pair<Path, String>>) =
-        pathsAndNames.any {
-            val (path, humanName) = it
+    private fun unsupportedMimes(pathsAndNames: List<Pair<Path, String>>) = pathsAndNames.any {
+        val (path, humanName) = it
 
-            // First pass to filter out the files that have extensions hinting non-textual contents
-            val detectedByName = tika.detect(path.toString())
-            // application/octet-stream => Tika does not know what it might be, so let's check the contents
-            if (!mimeIsText(detectedByName) && detectedByName != "application/octet-stream") {
-                logger.debug("Guessed '$detectedByName' from $path ($humanName) file name, it is not text. Skipping.")
-                return@any true
-            }
-
-            // Second pass to make sure the file is indeed a text file
-            val detectedByContents = tika.detect(path)
-            if (mimeIsText(detectedByContents)) {
-                return@any false
-            }
-            logger.debug("Guessed '$detectedByContents' from $path ($humanName) contents, it is not text. Skipping.")
-            true
+        // First pass to filter out the files that have extensions hinting non-textual contents
+        val detectedByName = tika.detect(path.toString())
+        // application/octet-stream => Tika does not know what it might be, so let's check the contents
+        if (!mimeIsText(detectedByName) && detectedByName != "application/octet-stream") {
+            logger.debug("Guessed '$detectedByName' from $path ($humanName) file name, it is not text. Skipping.")
+            return@any true
         }
+
+        // Second pass to make sure the file is indeed a text file
+        val detectedByContents = tika.detect(path)
+        if (mimeIsText(detectedByContents)) {
+            return@any false
+        }
+        logger.debug("Guessed '$detectedByContents' from $path ($humanName) contents, it is not text. Skipping.")
+        true
+    }
 
     private fun sizeLimitExceeded(pathsWithNamesAndSizes: List<Triple<Path, String, Long>>) =
         pathsWithNamesAndSizes.any {
@@ -130,6 +127,6 @@ class TextDiffInspector(private val sizeLimit: Long, private val tika: Tika) : D
 
         const val INSPECTION_RIGHT_EXTRA_LINES = "Extra lines in right"
         const val INSPECTION_RIGHT_CHANGED_LINES = "Changed lines in right"
-        const val INSPECTION_RIGHT_MISSING_LINES = "Missing lines in right"
+        const val INSPECTION_RIGHT_DELETED_LINES = "Missing lines in right"
     }
 }

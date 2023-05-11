@@ -1,0 +1,9 @@
+This is the original file that is used to test
+the text diff functionality of reprodiff.
+
+Some lines in other files will be changed, like this one.
+Some lines will only be in the original.
+
+New lines might appear as well!
+
+The previous line intentionally left blank.

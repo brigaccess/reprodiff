@@ -107,7 +107,6 @@ class CommonsCompressInspector(
         leftHumanName: String,
         rightHumanName: String
     ): List<InspectionResult> {
-
         // Check the archive types first
         val (leftType, rightType) = detectArchiveTypes(left, right)
         if (leftType.isBlank() || rightType.isBlank()) {
@@ -241,6 +240,7 @@ class CommonsCompressInspector(
                 metadata.inspectionResult = InspectionResult(
                     INSPECTION_ARCHIVE_EXTRACTED_SIZE_LIMIT_EXCEEDED,
                     humanName,
+                    leftDiff = metadata.entryName,
                     suffix = "(more than $sizeBudget bytes written)"
                 )
             } else {
@@ -260,7 +260,8 @@ class CommonsCompressInspector(
                 } catch (e: SizeLimitExceeded) {
                     metadata.inspectionResult = InspectionResult(
                         INSPECTION_ARCHIVE_EXTRACTION_FAILED_SIZE_LIMIT_EXCEEDED,
-                        "$humanName#/${metadata.entryName}",
+                        humanName,
+                        leftDiff = metadata.entryName,
                         suffix = "(more than $sizeBudget bytes written)"
                     )
                     path.deleteIfExists()

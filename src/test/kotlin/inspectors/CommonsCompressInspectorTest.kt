@@ -1,6 +1,12 @@
 package inspectors
 
+import DEFAULT_COMPRESS_MEMORY_LIMIT
+import DiffInspectorRegistry
 import InspectionResult
+import inspectors.CommonsCompressInspector.Companion.INSPECTION_ARCHIVE_EXTRACTED_SIZE_LIMIT_EXCEEDED
+import inspectors.CommonsCompressInspector.Companion.INSPECTION_ARCHIVE_EXTRACTION_FAILED_SIZE_LIMIT_EXCEEDED
+import inspectors.CommonsCompressInspector.Companion.INSPECTION_ARCHIVE_TOO_BIG_TO_ANALYZE
+import inspectors.CommonsCompressInspector.Companion.INSPECTION_ARCHIVE_TYPE_MISMATCH
 import inspectors.CommonsCompressInspector.Companion.INSPECTION_ARCHIVE_WRONG_ORDER
 import inspectors.CommonsCompressInspector.Companion.INSPECTION_COMPRESSED_SIZE_MISMATCH
 import inspectors.CommonsCompressInspector.Companion.INSPECTION_ENTRY_TYPE_MISMATCH
@@ -10,12 +16,23 @@ import inspectors.CommonsCompressInspector.Companion.INSPECTION_PERMISSIONS_MISM
 import inspectors.CommonsCompressInspector.Companion.INSPECTION_TIMESTAMP_MISMATCH
 import inspectors.CommonsCompressInspector.Companion.INSPECTION_UNCOMPRESSED_SIZE_MISMATCH
 import org.junit.jupiter.api.Test
+import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class CommonsCompressInspectorTest {
-    private val target = CommonsCompressInspector(42)
+    private val target = CommonsCompressInspector(DEFAULT_COMPRESS_MEMORY_LIMIT)
+    private val inspectorRegistry = DiffInspectorRegistry()
+
+    private val txt = getResourcePath("/10bytes.txt")
+    private val tgz = getResourcePath("/100bytes-x3-and-10bytes-x2.tar.gz")
+    private val zip = getResourcePath("/100bytes-x3-and-10bytes-x2.zip")
+
+    init {
+        inspectorRegistry.register(target)
+    }
 
     private val commonItem1 = ArchiveEntryMetadata(
         "alpha", Path("alpha"), false, "23", 42, true
@@ -220,7 +237,64 @@ class CommonsCompressInspectorTest {
         assertTrue(inspections.all { it.details == INSPECTION_FILE_MISSING_FROM_LEFT })
     }
 
-    // TODO Test entry assignments
+    @Test
+    fun testDiffFailsForDifferentArchiveTypes() {
+        val observed = target.diff(zip, tgz, inspectorRegistry)
+        assertEquals(1, observed.size)
+        val result = observed[0]
+        assertEquals(INSPECTION_ARCHIVE_TYPE_MISMATCH, result.details)
+        assertEquals("zip", result.leftDiff)
+        assertEquals("tar", result.rightDiff)
+    }
+
+    @Test
+    fun testDiffFailsForNonArchives() {
+        assertTrue(target.diff(txt, zip, inspectorRegistry).isEmpty())
+        assertTrue(target.diff(zip, txt, inspectorRegistry).isEmpty())
+    }
+
+    @Test
+    fun testDiffChecksSizeLimits() {
+        val smallTarget = CommonsCompressInspector(DEFAULT_COMPRESS_MEMORY_LIMIT, 1)
+        val observed = smallTarget.diff(zip, zip, inspectorRegistry)
+        assertTrue(observed.isNotEmpty())
+        assertTrue(observed.all { it.details == INSPECTION_ARCHIVE_TOO_BIG_TO_ANALYZE })
+    }
+
+    @Test
+    fun testDiffDoesNotLimitSizeWhenLimitIsNegative() {
+        val unlimitedTarget = CommonsCompressInspector(DEFAULT_COMPRESS_MEMORY_LIMIT, -1)
+        val observed = unlimitedTarget.diff(zip, zip, inspectorRegistry)
+        assertTrue(observed.isEmpty())
+    }
+
+    @Test
+    fun testDiffChecksExtractionLimits() {
+        // We expect that the target will:
+        // - unpack `100bytes-1.txt` successfully;
+        // - fail for `100bytes-2.txt` with EXTRACTION_FAILED
+        // - unpack `10bytes-1.txt` (since the budget will have 10 bytes left)
+        // - fail for `10bytes-2.txt` with EXTRACTED_SIZE_LIMIT_EXCEEDED
+        val limitedTarget = CommonsCompressInspector(DEFAULT_COMPRESS_MEMORY_LIMIT, -1, 110)
+
+        // This will return two entries because we use the same file on both sides
+        val observed = limitedTarget.diff(zip, zip, inspectorRegistry)
+        assertEquals(4, observed.size)
+        observed.map { Pair(it.details, it.leftDiff!!) }.forEach {
+            val (details, fileName) = it
+            when (details) {
+                INSPECTION_ARCHIVE_EXTRACTION_FAILED_SIZE_LIMIT_EXCEEDED -> assertTrue(fileName.endsWith("100bytes-2.txt"))
+                INSPECTION_ARCHIVE_EXTRACTED_SIZE_LIMIT_EXCEEDED -> assertTrue(fileName.endsWith("10bytes-2.txt"))
+                else -> fail("Unexpected inspection result: $details")
+            }
+        }
+    }
+
+    @Test
+    fun testDiffReturnsNoResultsForTheSameFile() {
+        val observed = target.diff(zip, zip, inspectorRegistry)
+        assertTrue(observed.isEmpty())
+    }
 
     /**
      * Asserts 4 inspections about missing files
@@ -265,5 +339,11 @@ class CommonsCompressInspectorTest {
                 commonItem3Left.entryName
             ) && it.leftDiff!! == commonItem3Left.permissions && it.rightDiff!! == commonItem3Right.permissions
         })
+    }
+
+    private fun getResourcePath(s: String): Path {
+        return with(javaClass) {
+            getResource(s)?.let { Path(it.path) }!!
+        }
     }
 }

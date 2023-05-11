@@ -1,5 +1,5 @@
 import DiffInspectorRegistry.Companion.INSPECTION_DEPTH_EXCEEDED
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
 import kotlin.io.path.Path

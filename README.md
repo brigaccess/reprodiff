@@ -7,6 +7,5 @@ For the proposed architecture, this tool should provide an adequate validation
 of binary equality.
 
 ### Further possible improvements
-- Textual/binary diffs. While not really necessary, will still speed up the investigations;
-- Add the possibility to compare the contents of PK files (zip, jar);
 - Speed up the SHA256 by leveraging [ACCP](https://github.com/corretto/amazon-corretto-crypto-provider) (limits the portability though)
+- More supported introspection formats (elf symbols/sections introspection, image metadata maybe?)

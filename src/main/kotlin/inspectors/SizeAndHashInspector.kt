@@ -57,7 +57,7 @@ class SizeAndHashInspector(private val ignoreSize: Boolean, private val hashFunc
         runBlocking {
             paths.map {
                 async(Dispatchers.Default) {
-                    hashFunc(it.inputStream())
+                    it.inputStream().use { hashFunc(it) }
                 }
             }.map { it.await() }.zipWithNext { left, right ->
                 if (left != right) {

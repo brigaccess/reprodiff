@@ -160,11 +160,13 @@ class CommonsCompressInspector(
         val result = runBlocking {
             listOf(left, right).map {
                 async(Dispatchers.IO) {
-                    try {
-                        ArchiveStreamFactory.detect(provideInputStream(it))
-                    } catch (e: ArchiveException) {
-                        logger.debug("Failed archive type detection for $it: $e")
-                        ""
+                    provideInputStream(it).use { s ->
+                        try {
+                            ArchiveStreamFactory.detect(s)
+                        } catch (e: ArchiveException) {
+                            logger.debug("Failed archive type detection for $it: $e")
+                            ""
+                        }
                     }
                 }
             }.map { it.await() }
@@ -199,83 +201,84 @@ class CommonsCompressInspector(
      */
     private fun extractArchiveFilesFlat(p: Path, humanName: String): List<ArchiveEntryMetadata> {
         // TODO Testability
-        val ais = ArchiveStreamFactory().createArchiveInputStream(provideInputStream(p))
-
-        val rootFolderPrefix = "reprodiff-${Instant.now().epochSecond}-"
-        val rootFolder = if (tempRootDir != null) {
-            Files.createTempDirectory(tempRootDir, rootFolderPrefix)
-        } else {
-            Files.createTempDirectory(rootFolderPrefix)
-        }
-        rootFolder.toFile().deleteOnExit()
-
-        val sizeBudget = totalExtractedSizeLimit
-        var remainingBudget: Long = sizeBudget
-        val useSizeLimit = remainingBudget > 0
-
-        val entries = mutableListOf<ArchiveEntryMetadata>()
-
-        while (true) {
-            val archiveEntry: ArchiveEntry? = ais.nextEntry
-            archiveEntry ?: break
-            // To prevent possible ZipSlips, unsupported file names and so on,
-            // all the files will get the random UUIDs instead. These are not
-            // for humans to investigate anyway, humans have archivers.
-            val uuid = UUID.randomUUID().toString()
-            val metadata = ArchiveEntryMetadata.fromEntry(archiveEntry)
-
-            // We're only extracting files, but we also need to keep track of directories
-            if (metadata.isDirectory) {
-                entries.add(metadata)
-                continue
-            }
-
-            val extension = entryExtension(metadata.entryName)
-            val path: Path = rootFolder.resolve("$uuid$extension")
-
-            // Try to extract while also respecting the size limits (if necessary)
-            val extracted: Boolean
-            if (useSizeLimit && remainingBudget <= 0) {
-                extracted = false
-                metadata.inspectionResult = InspectionResult(
-                    INSPECTION_ARCHIVE_EXTRACTED_SIZE_LIMIT_EXCEEDED,
-                    humanName,
-                    leftDiff = metadata.entryName,
-                    suffix = "(more than $sizeBudget bytes written)"
-                )
+        provideInputStream(p).use { s ->
+            val ais = ArchiveStreamFactory().createArchiveInputStream(s)
+            val rootFolderPrefix = "reprodiff-${Instant.now().epochSecond}-"
+            val rootFolder = if (tempRootDir != null) {
+                Files.createTempDirectory(tempRootDir, rootFolderPrefix)
             } else {
-                extracted = try {
-                    val fos = FileOutputStream(path.toFile())
-                    fos.use {
-                        val count = copyWithLimit(ais, fos, remainingBudget)
-                        if (useSizeLimit) {
-                            remainingBudget -= count
-                        }
-                    }
-                    path.toFile().deleteOnExit()
-                    true
-                } catch (e: IOException) {
-                    logger.error("Failed extracting $path: $e")
-                    false
-                } catch (e: SizeLimitExceeded) {
+                Files.createTempDirectory(rootFolderPrefix)
+            }
+            rootFolder.toFile().deleteOnExit()
+
+            val sizeBudget = totalExtractedSizeLimit
+            var remainingBudget: Long = sizeBudget
+            val useSizeLimit = remainingBudget > 0
+
+            val entries = mutableListOf<ArchiveEntryMetadata>()
+
+            while (true) {
+                val archiveEntry: ArchiveEntry? = ais.nextEntry
+                archiveEntry ?: break
+                // To prevent possible ZipSlips, unsupported file names and so on,
+                // all the files will get the random UUIDs instead. These are not
+                // for humans to investigate anyway, humans have archivers.
+                val uuid = UUID.randomUUID().toString()
+                val metadata = ArchiveEntryMetadata.fromEntry(archiveEntry)
+
+                // We're only extracting files, but we also need to keep track of directories
+                if (metadata.isDirectory) {
+                    entries.add(metadata)
+                    continue
+                }
+
+                val extension = entryExtension(metadata.entryName)
+                val path: Path = rootFolder.resolve("$uuid$extension")
+
+                // Try to extract while also respecting the size limits (if necessary)
+                val extracted: Boolean
+                if (useSizeLimit && remainingBudget <= 0) {
+                    extracted = false
                     metadata.inspectionResult = InspectionResult(
-                        INSPECTION_ARCHIVE_EXTRACTION_FAILED_SIZE_LIMIT_EXCEEDED,
+                        INSPECTION_ARCHIVE_EXTRACTED_SIZE_LIMIT_EXCEEDED,
                         humanName,
                         leftDiff = metadata.entryName,
                         suffix = "(more than $sizeBudget bytes written)"
                     )
-                    path.deleteIfExists()
-                    false
+                } else {
+                    extracted = try {
+                        val fos = FileOutputStream(path.toFile())
+                        fos.use {
+                            val count = copyWithLimit(ais, fos, remainingBudget)
+                            if (useSizeLimit) {
+                                remainingBudget -= count
+                            }
+                        }
+                        path.toFile().deleteOnExit()
+                        true
+                    } catch (e: IOException) {
+                        logger.error("Failed extracting $path: $e")
+                        false
+                    } catch (e: SizeLimitExceeded) {
+                        metadata.inspectionResult = InspectionResult(
+                            INSPECTION_ARCHIVE_EXTRACTION_FAILED_SIZE_LIMIT_EXCEEDED,
+                            humanName,
+                            leftDiff = metadata.entryName,
+                            suffix = "(more than $sizeBudget bytes written)"
+                        )
+                        path.deleteIfExists()
+                        false
+                    }
                 }
-            }
 
-            metadata.extracted = extracted
-            if (extracted) {
-                metadata.entryPath = path
+                metadata.extracted = extracted
+                if (extracted) {
+                    metadata.entryPath = path
+                }
+                entries.add(metadata)
             }
-            entries.add(metadata)
+            return entries
         }
-        return entries
     }
 
     private fun entryExtension(entryName: String): String {

@@ -5,6 +5,7 @@ import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.ParsingException
 import kotlinx.cli.default
+import kotlinx.coroutines.runBlocking
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.tika.Tika
 import java.io.FileNotFoundException
@@ -77,19 +78,21 @@ fun main(args: Array<String>) {
         register(TextDiffInspector(textMaxSize, Tika()))
     }
 
-    try {
-        val diff = registry.inspectFiles(Path(leftArg), Path(rightArg), maxDepth = maxDepth)
-        if (diff.isEmpty()) {
-            exitProcess(0)
+    runBlocking {
+        try {
+            val diff = registry.inspectFiles(Path(leftArg), Path(rightArg), maxDepth = maxDepth)
+            if (diff.isEmpty()) {
+                exitProcess(0)
+            }
+            diff.forEach { System.err.println("${it.toHumanString()}\n") }
+            exitProcess(1)
+        } catch (e: FileNotFoundException) {
+            System.err.println("File does not exist: ${e.message}")
+        } catch (e: java.nio.file.AccessDeniedException) {
+            System.err.println("Access denied: ${e.file}")
+        } catch (e: IOException) {
+            System.err.println("IO exception: ${e.message}")
         }
-        diff.forEach { System.err.println("${it.toHumanString()}\n") }
-        exitProcess(1)
-    } catch (e: FileNotFoundException) {
-        System.err.println("File does not exist: ${e.message}")
-    } catch (e: java.nio.file.AccessDeniedException) {
-        System.err.println("Access denied: ${e.file}")
-    } catch (e: IOException) {
-        System.err.println("IO exception: ${e.message}")
+        exitProcess(2)
     }
-    exitProcess(2)
 }

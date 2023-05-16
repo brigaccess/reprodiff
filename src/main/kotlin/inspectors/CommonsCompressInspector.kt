@@ -5,9 +5,7 @@ import DEFAULT_TOTAL_EXTRACTED_SIZE_LIMIT
 import DiffInspector
 import DiffInspectorRegistry
 import InspectionResult
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.ArchiveException
 import org.apache.commons.compress.archivers.ArchiveStreamFactory
@@ -98,7 +96,7 @@ class CommonsCompressInspector(
     private val csf = CompressorStreamFactory(false, memoryLimitKb)
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun diff(
+    override suspend fun diff(
         left: Path,
         right: Path,
         registry: DiffInspectorRegistry,
@@ -135,23 +133,24 @@ class CommonsCompressInspector(
         }
 
         // Extract files and analyze them recursively
-        result.addAll(runBlocking {
+        result.addAll(coroutineScope {
             pathsAndNames.map {
                 val (path, humanName) = it
                 async(Dispatchers.IO) { extractArchiveFilesFlat(path, humanName) }
-            }.map { it.await() }.zipWithNext().map {
+            }.awaitAll().zipWithNext().map {
                 val (metadataInspectionResults, intersection) = compareMetadataLists(
                     it.first, it.second, leftHumanName, rightHumanName
                 )
                 result.addAll(metadataInspectionResults)
                 intersection.map { toInspect ->
                     val (leftPath, rightPath, name) = toInspect
-                    // TODO This should be parallelized too?
-                    registry.inspectFiles(
-                        leftPath, rightPath, depth + 1, maxDepth, "$leftHumanName#/$name", "$rightHumanName#/$name"
-                    )
+                    async (Dispatchers.Default) {
+                        registry.inspectFiles(
+                            leftPath, rightPath, depth + 1, maxDepth, "$leftHumanName#/$name", "$rightHumanName#/$name"
+                        )
+                    }
                 }
-            }.flatten().flatten()
+            }.flatten().awaitAll().flatten()
         })
         return result
     }
@@ -167,7 +166,7 @@ class CommonsCompressInspector(
                         ""
                     }
                 }
-            }.map { it.await() }
+            }.awaitAll()
         }
         return Pair(result[0], result[1])
     }

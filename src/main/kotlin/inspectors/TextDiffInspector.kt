@@ -19,7 +19,7 @@ import kotlin.io.path.inputStream
 class TextDiffInspector(private val sizeLimit: Long, private val tika: Tika) : DiffInspector {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun diff(
+    override suspend fun diff(
         left: Path,
         right: Path,
         registry: DiffInspectorRegistry,
@@ -46,9 +46,11 @@ class TextDiffInspector(private val sizeLimit: Long, private val tika: Tika) : D
                 logger.error("Error reading lines from file $path ($humanName): $e")
                 return@diff emptyList()
             }
-        }.zipWithNext().forEach {
+        }.zipWithNext().map {
             val patch = DiffUtils.diff(it.first, it.second)
-            patch.deltas.map { d -> result.add(patchToInspectionResult(d, leftHumanName, rightHumanName)) }
+            patch.deltas
+        }.flatten().forEach {
+            result.add(patchToInspectionResult(it, leftHumanName, rightHumanName))
         }
 
         return result

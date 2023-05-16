@@ -15,6 +15,7 @@ import inspectors.CommonsCompressInspector.Companion.INSPECTION_FILE_MISSING_FRO
 import inspectors.CommonsCompressInspector.Companion.INSPECTION_PERMISSIONS_MISMATCH
 import inspectors.CommonsCompressInspector.Companion.INSPECTION_TIMESTAMP_MISMATCH
 import inspectors.CommonsCompressInspector.Companion.INSPECTION_UNCOMPRESSED_SIZE_MISMATCH
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -238,7 +239,7 @@ class CommonsCompressInspectorTest {
     }
 
     @Test
-    fun testDiffFailsForDifferentArchiveTypes() {
+    fun testDiffFailsForDifferentArchiveTypes() = runBlocking {
         val observed = target.diff(zip, tgz, inspectorRegistry)
         assertEquals(1, observed.size)
         val result = observed[0]
@@ -248,13 +249,13 @@ class CommonsCompressInspectorTest {
     }
 
     @Test
-    fun testDiffFailsForNonArchives() {
+    fun testDiffFailsForNonArchives() = runBlocking {
         assertTrue(target.diff(txt, zip, inspectorRegistry).isEmpty())
         assertTrue(target.diff(zip, txt, inspectorRegistry).isEmpty())
     }
 
     @Test
-    fun testDiffChecksSizeLimits() {
+    fun testDiffChecksSizeLimits() = runBlocking {
         val smallTarget = CommonsCompressInspector(DEFAULT_COMPRESS_MEMORY_LIMIT, 1)
         val observed = smallTarget.diff(zip, zip, inspectorRegistry)
         assertTrue(observed.isNotEmpty())
@@ -262,14 +263,14 @@ class CommonsCompressInspectorTest {
     }
 
     @Test
-    fun testDiffDoesNotLimitSizeWhenLimitIsNegative() {
+    fun testDiffDoesNotLimitSizeWhenLimitIsNegative() = runBlocking  {
         val unlimitedTarget = CommonsCompressInspector(DEFAULT_COMPRESS_MEMORY_LIMIT, -1)
         val observed = unlimitedTarget.diff(zip, zip, inspectorRegistry)
         assertTrue(observed.isEmpty())
     }
 
     @Test
-    fun testDiffChecksExtractionLimits() {
+    fun testDiffChecksExtractionLimits(): Unit = runBlocking {
         // We expect that the target will:
         // - unpack `100bytes-1.txt` successfully;
         // - fail for `100bytes-2.txt` with EXTRACTION_FAILED
@@ -291,7 +292,7 @@ class CommonsCompressInspectorTest {
     }
 
     @Test
-    fun testDiffReturnsNoResultsForTheSameFile() {
+    fun testDiffReturnsNoResultsForTheSameFile(): Unit = runBlocking {
         val observed = target.diff(zip, zip, inspectorRegistry)
         assertTrue(observed.isEmpty())
     }

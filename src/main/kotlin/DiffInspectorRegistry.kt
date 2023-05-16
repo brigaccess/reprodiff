@@ -1,3 +1,6 @@
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import java.nio.file.Path
 
 class DiffInspectorRegistry {
@@ -7,13 +10,13 @@ class DiffInspectorRegistry {
         inspectors.add(i)
     }
 
-    fun inspectFiles(
+    suspend fun inspectFiles(
         left: Path, right: Path, depth: Int = 0, maxDepth: Int = 2, leftName: String? = null, rightName: String? = null
-    ): List<InspectionResult> {
+    ): List<InspectionResult> = coroutineScope {
         val leftHumanName = leftName ?: left.fileName.toString()
         val rightHumanName = rightName ?: right.fileName.toString()
         if (depth > maxDepth) {
-            return listOf(
+            return@coroutineScope listOf(
                 InspectionResult(
                     INSPECTION_DEPTH_EXCEEDED,
                     leftHumanName,
@@ -21,11 +24,14 @@ class DiffInspectorRegistry {
                 )
             )
         }
-        return inspectors.map {
-            it.diff(
-                left, right, this@DiffInspectorRegistry, depth, maxDepth, leftHumanName, rightHumanName
-            )
-        }.flatten()
+
+        return@coroutineScope inspectors.map {
+            return@map async (Dispatchers.Default) {
+                it.diff(
+                    left, right, this@DiffInspectorRegistry, depth, maxDepth, leftHumanName, rightHumanName
+                )
+            }
+        }.map { it.await() }.flatten()
     }
 
     companion object {

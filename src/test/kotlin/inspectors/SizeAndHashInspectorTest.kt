@@ -1,6 +1,7 @@
 package inspectors
 
 import DiffInspectorRegistry
+import kotlinx.coroutines.runBlocking
 import org.apache.commons.codec.digest.DigestUtils
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -28,12 +29,14 @@ class SizeAndHashInspectorTest {
         Files.write(right, listOf("Yay!"))
 
         assertThrows<FileNotFoundException> {
-            SizeAndHashInspector(false, sha256HashFunc).diff(left, right, registry)
+            runBlocking {
+                SizeAndHashInspector(false, sha256HashFunc).diff(left, right, registry)
+            }
         }
     }
 
     @Test
-    fun testSizeMismatchingFiles(@TempDir tempDir: Path) {
+    fun testSizeMismatchingFiles(@TempDir tempDir: Path) = runBlocking {
         val files = prepareFiles(tempDir, "left", "right")
 
         var called = false
@@ -49,7 +52,7 @@ class SizeAndHashInspectorTest {
     }
 
     @Test
-    fun testRespectsIgnoreSize(@TempDir tempDir: Path) {
+    fun testRespectsIgnoreSize(@TempDir tempDir: Path) = runBlocking {
         val files = prepareFiles(tempDir, "left", "right")
 
         var called = false
@@ -61,7 +64,7 @@ class SizeAndHashInspectorTest {
     }
 
     @Test
-    fun testSizeMatchingDifferentFiles(@TempDir tempDir: Path) {
+    fun testSizeMatchingDifferentFiles(@TempDir tempDir: Path) = runBlocking {
         val files = prepareFiles(tempDir, "left", "l3ft")
 
         val observed = SizeAndHashInspector(false, sha256HashFunc).diff(files[0], files[1], registry)
@@ -70,7 +73,7 @@ class SizeAndHashInspectorTest {
     }
 
     @Test
-    fun testMatchingFiles(@TempDir tempDir: Path) {
+    fun testMatchingFiles(@TempDir tempDir: Path) = runBlocking {
         val files = prepareFiles(tempDir, "left", "left")
         val observed = SizeAndHashInspector(false, sha256HashFunc).diff(files[0], files[1], registry)
         assertTrue(observed.isEmpty())

@@ -2,8 +2,10 @@ package inspectors
 
 import DEFAULT_TEXT_SIZE_LIMIT
 import DiffInspectorRegistry
+import kotlinx.coroutines.runBlocking
 import org.apache.tika.Tika
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.kotlin.*
@@ -38,7 +40,7 @@ class TextDiffInspectorTest {
     private val defaultTarget = TextDiffInspector(DEFAULT_TEXT_SIZE_LIMIT, mockTextTika)
 
     @Test
-    fun testDiffChecksFileSizes() {
+    fun testDiffChecksFileSizes() = runBlocking {
         val smallestTarget = TextDiffInspector(9, mockTextTika)
         val observedSmallest = smallestTarget.diff(smallest, small, registry)
         assertEquals(0, observedSmallest.size)
@@ -51,7 +53,7 @@ class TextDiffInspectorTest {
     }
 
     @Test
-    fun testDiffDoesNotCheckFileSizesWhenLimitIsNegative() {
+    fun testDiffDoesNotCheckFileSizesWhenLimitIsNegative(): Unit = runBlocking {
         val smallestTarget = TextDiffInspector(-1, mockNonTextTika)
         val observedSmallest = smallestTarget.diff(small, small, registry)
         assertEquals(0, observedSmallest.size)
@@ -59,7 +61,7 @@ class TextDiffInspectorTest {
     }
 
     @Test
-    fun testDiffChecksMimeTypesByNames() {
+    fun testDiffChecksMimeTypesByNames(): Unit = runBlocking {
         val target = TextDiffInspector(DEFAULT_TEXT_SIZE_LIMIT, mockNonTextTika)
         val observed = target.diff(smallest, small, registry)
         assertTrue(observed.isEmpty())
@@ -67,7 +69,7 @@ class TextDiffInspectorTest {
     }
 
     @Test
-    fun testDiffChecksMimeTypesWhenNameSuggestsOctetStream() {
+    fun testDiffChecksMimeTypesWhenNameSuggestsOctetStream(): Unit = runBlocking {
         val mockTika: Tika = mock()
         val target = TextDiffInspector(DEFAULT_TEXT_SIZE_LIMIT, mockTika)
 
@@ -83,13 +85,13 @@ class TextDiffInspectorTest {
     }
 
     @Test
-    fun testDiffReturnsNothingForEqualFiles() {
+    fun testDiffReturnsNothingForEqualFiles(): Unit = runBlocking {
         val observed = defaultTarget.diff(original, original, registry)
         assertTrue(observed.isEmpty())
     }
 
     @Test
-    fun testDiffNewLines() {
+    fun testDiffNewLines() = runBlocking {
         val observed = defaultTarget.diff(original, newLines, registry)
         assertEquals(1, observed.size)
         val result = observed[0]
@@ -102,7 +104,7 @@ class TextDiffInspectorTest {
     }
 
     @Test
-    fun testDiffChangedLines() {
+    fun testDiffChangedLines(): Unit = runBlocking {
         val observed = defaultTarget.diff(original, changedLines, registry)
         assertEquals(1, observed.size)
         val result = observed[0]
@@ -116,7 +118,7 @@ class TextDiffInspectorTest {
     }
 
     @Test
-    fun testDiffDeletedLines() {
+    fun testDiffDeletedLines(): Unit = runBlocking {
         val observed = defaultTarget.diff(original, deletedLines, registry)
         assertEquals(1, observed.size)
         val result = observed[0]

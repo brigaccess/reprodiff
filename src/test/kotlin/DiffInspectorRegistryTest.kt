@@ -1,4 +1,5 @@
 import DiffInspectorRegistry.Companion.INSPECTION_DEPTH_EXCEEDED
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
@@ -11,7 +12,7 @@ class DiffInspectorRegistryTest {
     private val rightName = "humanRight"
 
     @Test
-    fun testDiffInspectorRegistryRegistersAndCallsInspectors() {
+    fun testDiffInspectorRegistryRegistersAndCallsInspectors() = runBlocking {
         val mockInspector: DiffInspector = mock()
         val target = DiffInspectorRegistry()
 
@@ -31,7 +32,7 @@ class DiffInspectorRegistryTest {
     }
 
     @Test
-    fun testDiffInspectorRegistryReturnsResultsForMultipleInspectors() {
+    fun testDiffInspectorRegistryReturnsResultsForMultipleInspectors() = runBlocking {
         val target = DiffInspectorRegistry()
         val mockInspectorOne: DiffInspector = mock()
         val mockInspectorTwo: DiffInspector = mock()
@@ -58,7 +59,7 @@ class DiffInspectorRegistryTest {
     }
 
     @Test
-    fun testDiffInspectorRegistryFailsOnDepthExceeded() {
+    fun testDiffInspectorRegistryFailsOnDepthExceeded() = runBlocking {
         val mockInspector: DiffInspector = mock()
         val target = DiffInspectorRegistry()
 

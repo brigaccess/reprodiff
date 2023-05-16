@@ -5,7 +5,8 @@ import DiffInspectorRegistry
 import InspectionResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.nio.file.Path
@@ -16,7 +17,7 @@ import kotlin.io.path.notExists
 typealias InputStreamHashFunc = (x: InputStream) -> String
 
 class SizeAndHashInspector(private val ignoreSize: Boolean, private val hashFunc: InputStreamHashFunc) : DiffInspector {
-    override fun diff(
+    override suspend fun diff(
         left: Path,
         right: Path,
         registry: DiffInspectorRegistry,
@@ -54,12 +55,12 @@ class SizeAndHashInspector(private val ignoreSize: Boolean, private val hashFunc
         }
 
         // Calculate whether secure hashes match
-        runBlocking {
+        coroutineScope {
             paths.map {
                 async(Dispatchers.Default) {
                     hashFunc(it.inputStream())
                 }
-            }.map { it.await() }.zipWithNext { left, right ->
+            }.awaitAll().zipWithNext { left, right ->
                 if (left != right) {
                     result.add(
                         InspectionResult(

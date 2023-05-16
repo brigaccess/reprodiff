@@ -2,7 +2,7 @@ import java.nio.file.Path
 
 interface DiffInspector {
     /** Returns a list of differences between two files (recursively if possible) */
-    fun diff(
+    suspend fun diff(
         left: Path,
         right: Path,
         registry: DiffInspectorRegistry,
